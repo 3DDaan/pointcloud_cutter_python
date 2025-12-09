@@ -14,12 +14,18 @@ except ImportError:
     HAS_PDAL = False
 
 
-def clip_pointcloud_with_aoi_auto(input_laz: str, aoi_file: str, output_dir: str, chunk_size: int = 10_000_000):
+def clip_pointcloud_with_aoi_auto(
+    input_laz: str,
+    aoi_file: str,
+    output_dir: str,
+    chunk_size: int = 10_000_000,
+    out_epsg: int = 3857,
+):
     """
     Clips either a standard LAS/LAZ or COPC.LAZ file with an AOI.
     - COPC  -> handled via PDAL  (with AHN→EPSG:7415 auto-detect)
     - LAS/LAZ -> handled via laspy
-    Output is always reprojected to EPSG:3857.
+    Output is reprojected to the provided EPSG (default 3857).
     """
 
     # --- Load AOI ---
@@ -38,6 +44,7 @@ def clip_pointcloud_with_aoi_auto(input_laz: str, aoi_file: str, output_dir: str
     basename = os.path.splitext(os.path.basename(input_laz))[0]
     output_path = os.path.join(output_dir, f"{basename}_clip.laz")
     os.makedirs(output_dir, exist_ok=True)
+    out_srs = f"EPSG:{out_epsg}"
 
     # =====================================================
     # COPC HANDLING  →  PDAL
@@ -80,7 +87,7 @@ def clip_pointcloud_with_aoi_auto(input_laz: str, aoi_file: str, output_dir: str
             "pipeline": [
                 reader_stage,
                 {"type": "filters.crop", "polygon": aoi_wkt},
-                {"type": "filters.reprojection", "out_srs": "EPSG:3857"},
+                {"type": "filters.reprojection", "out_srs": out_srs},
                 {
                     "type": "writers.las",
                     "filename": output_path,
@@ -153,11 +160,11 @@ def clip_pointcloud_with_aoi_auto(input_laz: str, aoi_file: str, output_dir: str
         scales = src.header.scales
         offsets = src.header.offsets
 
-    header.add_crs(CRS.from_epsg(3857))
+    header.add_crs(CRS.from_epsg(out_epsg))
     las = laspy.LasData(header)
     las.points = laspy.ScaleAwarePointRecord(merged_points, header.point_format, scales, offsets)
 
-    transformer = Transformer.from_crs(pc_crs, 3857, always_xy=True)
+    transformer = Transformer.from_crs(pc_crs, out_epsg, always_xy=True)
     las.x, las.y = transformer.transform(las.x, las.y)
     las.write(output_path)
 
@@ -172,6 +179,7 @@ if __name__ == "__main__":
     # --- instellingen ---
     root_dir = pathlib.Path(r"C:\Users\Daan\Documents\data\RS1\Netherlands - Germany\Belgium\LIDAR_2021_2022_LAZ_1753254958428")
     aoi_file = r"C:\Users\Daan\Documents\data\RS1\AOI_VAALS\aoi.gpkg"
+    out_epsg = 3857
 
     # doorloop alle submappen
     for laz_path in root_dir.rglob("*.[lL][aA][zZ]"):
@@ -198,7 +206,7 @@ if __name__ == "__main__":
             print(f"Output → {output_path}")
 
             # run clipping pas nu
-            clip_pointcloud_with_aoi_auto(str(laz_path), aoi_file, str(clip_dir))
+            clip_pointcloud_with_aoi_auto(str(laz_path), aoi_file, str(clip_dir), out_epsg=out_epsg)
 
         except KeyboardInterrupt:
             print("⛔ Handmatig gestopt.")
