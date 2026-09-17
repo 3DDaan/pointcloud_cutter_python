@@ -177,8 +177,8 @@ if __name__ == "__main__":
     import pathlib
 
     # --- instellingen ---
-    root_dir = pathlib.Path(r"C:\Users\Daan\Documents\data\RS1\Netherlands - Germany\Belgium\LIDAR_2021_2022_LAZ_1753254958428")
-    aoi_file = r"C:\Users\Daan\Documents\data\RS1\AOI_VAALS\aoi.gpkg"
+    root_dir = pathlib.Path(r"PATH TO DIR")
+    aoi_file = r"PATH TO AOI"
     out_epsg = 3857
 
     # doorloop alle submappen
